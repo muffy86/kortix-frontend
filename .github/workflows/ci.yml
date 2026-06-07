@@ -1,20 +1,11 @@
-name: CI
-
-on:
-  push:
-    branches: [master]
-  pull_request:
-    branches: [master]
-
+on: [push, pull_request]
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+  node:
+    uses: muffy86/infra-automation/.github/workflows/ci-node.yml@main
+    with: { node-version: "20", package-manager: "pnpm" }
+  python:
+    uses: muffy86/infra-automation/.github/workflows/ci-python.yml@main
+    with: { python-version: "3.12", package-manager: "uv" }
+  rust:
+    uses: muffy86/infra-automation/.github/workflows/ci-rust.yml@main
+    with: { rust-toolchain: "stable" }
