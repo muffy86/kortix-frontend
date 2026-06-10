@@ -1,11 +1,15 @@
-on: [push, pull_request]
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   node:
-    uses: muffy86/infra-automation/.github/workflows/ci-node.yml@main
-    with: { node-version: "20", package-manager: "pnpm" }
-  python:
-    uses: muffy86/infra-automation/.github/workflows/ci-python.yml@main
-    with: { python-version: "3.12", package-manager: "uv" }
-  rust:
-    uses: muffy86/infra-automation/.github/workflows/ci-rust.yml@main
-    with: { rust-toolchain: "stable" }
+    uses: muffy86/infra-automation/.github/workflows/ci-node.yml@c3dde6e202b86cb98da359226cb1017058047b75 # main
+    with: { node-version: "20", package-manager: "npm" }
