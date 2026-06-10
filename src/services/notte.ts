@@ -48,15 +48,22 @@ export class NotteBrowser {
       const data = await agentRes.json();
       return data.answer ?? JSON.stringify(data);
     } finally {
-      await fetch(`${NOTTE_API_BASE}/v1/sessions/${sessionId}`, {
-        method: 'DELETE',
-        headers: this.headers,
-      });
+      try {
+        await fetch(`${NOTTE_API_BASE}/v1/sessions/${sessionId}`, {
+          method: 'DELETE',
+          headers: this.headers,
+        });
+      } catch (cleanupErr) {
+        console.error('Failed to clean up Notte session:', cleanupErr);
+      }
     }
   }
 }
 
 export function createNotteBrowser(): NotteBrowser {
-  const key = (import.meta as any).env?.VITE_NOTTE_API_KEY ?? '';
+  const key = (import.meta as any).env?.VITE_NOTTE_API_KEY;
+  if (!key) {
+    throw new Error('VITE_NOTTE_API_KEY is not defined in the environment variables.');
+  }
   return new NotteBrowser(key);
 }
