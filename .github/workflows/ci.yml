@@ -11,5 +11,5 @@ concurrency:
 
 jobs:
   node:
-    uses: muffy86/infra-automation/.github/workflows/ci-node.yml@main
+    uses: muffy86/infra-automation/.github/workflows/ci-node.yml@c3dde6e202b86cb98da359226cb1017058047b75 # main
     with: { node-version: "20", package-manager: "npm" }
