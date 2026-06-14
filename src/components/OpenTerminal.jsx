@@ -1,18 +1,24 @@
 import { useState, useRef, useEffect } from 'react';
 
-const TERMINAL_URL = import.meta.env.VITE_OPEN_TERMINAL_URL ?? 'http://localhost:8000';
-const API_KEY = import.meta.env.VITE_OPEN_TERMINAL_API_KEY ?? '';
+// Route through a backend proxy — the OpenTerminal API key must NEVER be exposed
+// in the frontend bundle. Configure a server-side proxy at VITE_OPEN_TERMINAL_PROXY_URL.
+const TERMINAL_PROXY = import.meta.env.VITE_OPEN_TERMINAL_PROXY_URL ?? '/api/terminal';
 
 async function execCommand(command) {
-  const res = await fetch(`${TERMINAL_URL}/execute`, {
+  const res = await fetch(TERMINAL_PROXY, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ command }),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    let errorMsg = `HTTP ${res.status}`;
+    try {
+      const errBody = await res.json();
+      const detail = errBody?.detail || errBody?.message || errBody?.error;
+      if (detail) errorMsg += ': ' + detail;
+    } catch { /* ignore non-JSON bodies */ }
+    throw new Error(errorMsg);
+  }
   return res.json();
 }
 
@@ -30,8 +36,13 @@ export default function OpenTerminal({ height = 360 }) {
   const [cmdHistory, setCmdHistory] = useState([]);
   const [histIdx, setHistIdx] = useState(-1);
   const bottomRef = useRef(null);
+  const isFirstRender = useRef(true);
 
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [lines]);
 
@@ -43,15 +54,19 @@ export default function OpenTerminal({ height = 360 }) {
     setHistIdx(-1);
     setCmdHistory((h) => [cmd, ...h].slice(0, 100));
     setBusy(true);
-    setLines((l) => [...l, { type: 'cmd', text: `$ ${cmd}` }]);
+    setLines((l) => [...l, { type: 'cmd', text: `$ ${cmd}` }].slice(-500));
 
     try {
       const { stdout, stderr, exit_code } = await execCommand(cmd);
-      if (stdout) setLines((l) => [...l, { type: 'out', text: stdout }]);
-      if (stderr) setLines((l) => [...l, { type: 'err', text: stderr }]);
-      if (exit_code !== 0) setLines((l) => [...l, { type: 'err', text: `exit ${exit_code}` }]);
+      const newLines = [];
+      if (stdout) newLines.push({ type: 'out', text: stdout });
+      if (stderr) newLines.push({ type: 'err', text: stderr });
+      if (exit_code !== 0 && exit_code !== undefined) newLines.push({ type: 'err', text: `exit ${exit_code}` });
+      if (newLines.length > 0) {
+        setLines((l) => [...l, ...newLines].slice(-500));
+      }
     } catch (err) {
-      setLines((l) => [...l, { type: 'err', text: String(err) }]);
+      setLines((l) => [...l, { type: 'err', text: String(err) }].slice(-500));
     } finally {
       setBusy(false);
     }
@@ -88,18 +103,11 @@ export default function OpenTerminal({ height = 360 }) {
       <div style={{ fontSize: 11, color: '#4ade80', marginBottom: 8, fontWeight: 'bold', letterSpacing: 1 }}>
         ⚡ OPEN TERMINAL
       </div>
-
       <div style={{ flex: 1, overflowY: 'auto', marginBottom: 8 }}>
         {lines.map((l, i) => (
           <pre
             key={i}
-            style={{
-              margin: '1px 0',
-              color: LINE_COLORS[l.type],
-              whiteSpace: 'pre-wrap',
-              wordBreak: 'break-all',
-              fontSize: 12,
-            }}
+            style={{ margin: '1px 0', color: LINE_COLORS[l.type], whiteSpace: 'pre-wrap', wordBreak: 'break-all', fontSize: 12 }}
           >
             {l.text}
           </pre>
@@ -107,7 +115,6 @@ export default function OpenTerminal({ height = 360 }) {
         {busy && <div style={{ color: '#4ade80', opacity: 0.5, fontSize: 12 }}>▋</div>}
         <div ref={bottomRef} />
       </div>
-
       <form onSubmit={submit} style={{ display: 'flex', gap: 6, borderTop: '1px solid #166534', paddingTop: 8 }}>
         <span style={{ color: '#4ade80', fontSize: 13 }}>$</span>
         <input
@@ -116,30 +123,13 @@ export default function OpenTerminal({ height = 360 }) {
           onKeyDown={handleKeyDown}
           disabled={busy}
           autoFocus
-          style={{
-            flex: 1,
-            background: 'transparent',
-            border: 'none',
-            color: '#86efac',
-            outline: 'none',
-            fontSize: 13,
-            fontFamily: 'monospace',
-          }}
+          style={{ flex: 1, background: 'transparent', border: 'none', color: '#86efac', outline: 'none', fontSize: 13, fontFamily: 'monospace' }}
           placeholder="command..."
         />
         <button
           type="submit"
           disabled={busy}
-          style={{
-            background: '#166534',
-            color: '#4ade80',
-            border: 'none',
-            borderRadius: 4,
-            padding: '3px 10px',
-            cursor: 'pointer',
-            fontSize: 11,
-            opacity: busy ? 0.5 : 1,
-          }}
+          style={{ background: '#166534', color: '#4ade80', border: 'none', borderRadius: 4, padding: '3px 10px', cursor: 'pointer', fontSize: 11, opacity: busy ? 0.5 : 1 }}
         >
           {busy ? '...' : 'RUN'}
         </button>
