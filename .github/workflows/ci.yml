@@ -1,11 +1,11 @@
 on: [push, pull_request]
 jobs:
   node:
-    uses: muffy86/infra-automation/.github/workflows/ci-node.yml@main
+    uses: Muffy1/infra-automation/.github/workflows/ci-node.yml@main
     with: { node-version: "20", package-manager: "pnpm" }
   python:
-    uses: muffy86/infra-automation/.github/workflows/ci-python.yml@main
+    uses: Muffy1/infra-automation/.github/workflows/ci-python.yml@main
     with: { python-version: "3.12", package-manager: "uv" }
   rust:
-    uses: muffy86/infra-automation/.github/workflows/ci-rust.yml@main
+    uses: Muffy1/infra-automation/.github/workflows/ci-rust.yml@main
     with: { rust-toolchain: "stable" }
